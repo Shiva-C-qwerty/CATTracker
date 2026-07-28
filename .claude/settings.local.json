@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "PowerShell(npm *)",
-      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:5173/\" -UseBasicParsing -TimeoutSec 10; Write-Output \"HTTP $\\($r.StatusCode\\)\"; if \\($r.Content -match '<div id=\"root\">'\\) { Write-Output \"root div present\" } } catch { Write-Output \"ERR: $_\" })",
-      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:5173/mocks\" -UseBasicParsing -TimeoutSec 10; Write-Output \"HTTP $\\($r.StatusCode\\)\" } catch { Write-Output \"ERR: $_\" })"
-    ]
-  }
-}
