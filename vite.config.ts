@@ -14,6 +14,10 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  // react-katex is CJS; pre-bundle it (and katex) so interop is consistent.
+  optimizeDeps: {
+    include: ['react-katex', 'katex'],
+  },
   test: {
     globals: true,
     environment: 'jsdom',

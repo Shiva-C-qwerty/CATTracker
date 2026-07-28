@@ -1,0 +1,15 @@
+{
+  "name": "CAT Prep Tracker",
+  "short_name": "CAT Tracker",
+  "description": "Local-first tracker for CAT 2026 prep: mocks, mistakes, formulas, and revision.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b0f17",
+  "theme_color": "#0b0f17",
+  "icons": [
+    { "src": "/icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "/icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "maskable" }
+  ]
+}

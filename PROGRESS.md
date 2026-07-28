@@ -24,105 +24,119 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done & verified
 
 ## Phase 1 — Persistence layer
 
-- [ ] Dexie DB setup with the v1 schema from CLAUDE.md
-- [ ] Entity TypeScript interfaces (discriminated unions where specified)
-- [ ] Chapter seed data (full QA/DILR/VARC list) + `seedVersion` in `meta`
-- [ ] Seed-on-first-run logic (idempotent, additive, never destructive)
-- [ ] `src/db/mutations.ts` — all writes go through named functions
-- [ ] `useLiveQuery` reads confirmed working
+- [x] Dexie DB setup with the v1 schema from CLAUDE.md
+- [x] Entity TypeScript interfaces (added `Mistake.lapses` for the SM-2 loop)
+- [x] Chapter seed data (full QA/DILR/VARC list, 55 chapters) + `seedVersion` in `meta`
+- [x] Seed-on-first-run logic (idempotent, additive, never destructive)
+- [x] `src/db/mutations.ts` — chapter writes via named functions (more added per phase)
+- [x] `useLiveQuery` reads — wired and driving the Sections/Chapter screens
 
 ## Phase 2 — Chapters (first useful feature)
 
-- [ ] Sections view (`/sections/:sectionId`): chapters grouped by `topicGroup`
-- [ ] Confidence pill (inline change, no modal) + status editing
-- [ ] Chapter detail (`/chapters/:id`) — Overview tab: notes (markdown), status, confidence
-- [ ] Filter by status/confidence, sort by weakness
-- [ ] Empty states designed
+- [x] Sections view (`/sections/:sectionId`): chapters grouped by `topicGroup`, section tabs, per-group progress bar
+- [x] Confidence pill (inline 5-dot, no modal) + status editing (pill + select)
+- [x] Chapter detail (`/chapters/:id`) — Overview tab: notes (markdown textarea, autosave), status, confidence, study meta
+- [x] Filter by status + confidence, sort by weakness (pure `weaknessScore`, unit-tested)
+- [x] Empty states designed (filter no-match)
+- Note: notes stored as markdown text; rendered preview deferred (no md dep added). Chapter detail Formulas/Mistakes/Revision tabs are disabled stubs pointing at their phases.
 
 ## Phase 3 — Mocks
 
-- [ ] Add Mock form: 3-column VARC/DILR/QA grid; live score + accuracy calc
-- [ ] Mock list: sortable/filterable table; `Needs Analysis` badge
-- [ ] Mock detail (`/mocks/:id`): breakdown, section bars, post-mortem template
-- [ ] Comparison view (overlay 2+ mocks)
-- [ ] Scoring logic in `src/lib/` (pure) + Vitest tests
+- [x] Add/Edit Mock form: VARC/DILR/QA grid; live per-section + total score & accuracy; provider autocomplete; sectional/topic-test show a single section picker
+- [x] Mock list: sortable (date/score/name) + filterable (type/provider) table; `Needs analysis` badge
+- [x] Mock detail (`/mocks/:id`): totals, per-section breakdown, Recharts section bars, analyse toggle, delete (confirm), autosave post-mortem with template
+- [x] Comparison view (`/mocks/compare?ids=`): grouped section-score bars + metric table
+- [x] Scoring logic in `src/lib/scoring.ts` (pure) + 10 Vitest tests
+- Note: mistakes-from-this-mock list renders but stays empty until Phase 4. Bundle crossed 500 kB (Recharts) — code-split chart routes as a later optimization.
 
 ## Phase 4 — Mistake Log (CORE FEATURE — make it frictionless)
 
-- [ ] Quick-add modal: chapter, error type, question, key takeaway; rest collapsed
-- [ ] Global shortcut `Ctrl/Cmd+M` from every screen
-- [ ] Clipboard image paste → compressed base64
-- [ ] Mistake list (`/mistakes`) with all filters (section/chapter/type/difficulty/tag/date/resolved)
-- [ ] Analytics panel: error-type distribution, frequent chapters, >30% callouts
-- [ ] List/grid toggle
-- [ ] < 30s logging verified end-to-end
+- [x] Quick-add modal: chapter, error-type button grid, question, key takeaway; rest behind "Add detail"; Save & add another; ⌘/Ctrl+Enter to save
+- [x] Global shortcut `Ctrl/Cmd+M` + floating + button from every screen (QuickAddProvider)
+- [x] Clipboard image paste → canvas-compressed JPEG data URL (also file attach)
+- [x] Mistake list (`/mistakes`) with all filters (section/chapter/type/difficulty/tag/date/resolved)
+- [x] Analytics panel: error-type distribution bars, frequent chapters, >30% dominant-type callout (pure `mistakeStats`, unit-tested)
+- [x] List/grid toggle (grid shows image thumbnails)
+- [~] < 30s logging — flow built; awaiting your real-use confirmation
+- Note: mistakes get an initial `nextRevisionAt = +1 day` so they enter the Phase 8 queue. Full mistake editing (beyond resolve/delete) deferred; card has expand for approaches.
 
 ## Phase 5 — Formulas
 
-- [ ] Formula CRUD with inline add/edit; KaTeX rendering; star toggle
-- [ ] Chapter detail → Formulas tab
-- [ ] Formula Bank (`/formulas`): search + filters
-- [ ] Seed ~60–80 high-value QA formulas (with `whenToUse` + `commonTrap`)
+- [x] Formula CRUD via modal editor with live KaTeX preview; star toggle; safe render fallback for bad LaTeX
+- [x] Chapter detail → Formulas tab (also enabled Mistakes tab now that Phase 4 is done)
+- [x] Formula Bank (`/formulas`): search (title/plain/chapter) + section/chapter/starred filters, grouped by chapter
+- [x] Seeded ~60 high-value QA formulas across all 5 topic groups (each with `whenToUse` + `commonTrap`); additive-by-id seeding, SEED_VERSION=2
+- Note: print/PDF sheet of starred formulas is Phase 11 (not yet).
 
 ## Phase 6 — Export / Import (do not defer)
 
-- [ ] Export all data → timestamped JSON download
-- [ ] Import from JSON: merge-or-replace choice + record-count confirmation
-- [ ] `Ctrl/Cmd+E` export shortcut
-- [ ] 7-day export reminder (via `lastExportAt` in `meta`)
+- [x] Export all data → timestamped JSON download (`cat-tracker-backup-<ts>.json`)
+- [x] Import from JSON: merge-or-replace choice + per-table record-count confirmation modal; single transaction (failure leaves DB untouched)
+- [x] `Ctrl/Cmd+E` export shortcut (global)
+- [x] 7-day export reminder banner (via `lastExportAt` in `meta`, `useExportReminder`)
+- [x] Pure `parseBackup`/`countTables` validator + 6 Vitest tests
+- Also landed early (Phase 13 overlap): Settings page with editable exam date, additive re-seed, danger-zone clear-all (double-confirm).
 
 ## Phase 7 — Dashboard
 
-- [ ] Countdown to CAT
-- [ ] Today's snapshot
-- [ ] Due-for-revision list (chapters + mistakes) with one-click revise
-- [ ] Percentile trend chart (Recharts)
-- [ ] Weakest chapters (composite score)
-- [ ] Unanalysed-mocks warning (>24h)
-- [ ] Error-type breakdown donut (last 30 days)
+- [x] Countdown to CAT (from meta.examDate)
+- [x] Today's snapshot (mistakes logged + sections touched today)
+- [x] Due-for-revision list (chapters past targetRevisitAt + mistakes past nextRevisionAt) with link to /revise
+- [x] Percentile trend line chart, last 10 mocks, overall + 3 sections (Recharts)
+- [x] Weakest chapters (composite `weaknessScore` incl. mistake density)
+- [x] Unanalysed-mocks warning (>24h, loud rose banner)
+- [x] Error-type breakdown donut (last 30 days)
+- [x] Pure `dashboard` helpers + 6 Vitest tests
+- Note: "minutes studied today" awaits Phase 10 (study sessions); snapshot shows mistakes/sections for now.
 
 ## Phase 8 — Revision Queue
 
-- [ ] `/revise` flashcard flow; question-only → reveal
-- [ ] Got it / Partial / Still wrong buttons
-- [ ] Modified SM-2 scheduling in `src/lib/` (pure) + Vitest tests
-- [ ] Two-consecutive-"Got it" → `isResolved`, drop from queue
-- [ ] Queue size + estimated time
+- [x] `/revise` flashcard flow; question-only → reveal
+- [x] Got it / Partial / Still wrong buttons
+- [x] Modified SM-2 scheduling in `src/lib/revision.ts` (pure) + Vitest tests
+- [x] Two-consecutive-"Got it" → `isResolved`, drop from queue
+- [x] Queue size + estimated time
+- Added optional `Mistake.intervalDays` / `reviewStreak` fields (default for old records).
 
 ## Phase 9 — Analytics
 
-- [ ] Percentile/score trends (filter by date/provider)
-- [ ] Accuracy vs attempt-rate scatter
-- [ ] Error-type trend over time (stacked area)
-- [ ] Study hours heatmap + hours-vs-score correlation
-- [ ] Chapter mastery matrix (4 quadrants)
+- [x] Score & percentile trends (dual-axis line)
+- [x] Accuracy vs attempt-rate scatter (per section)
+- [x] Error-type trend over time (stacked area, 8-week buckets)
+- [x] Study hours by section + 8-week study calendar heatmap
+- [x] Chapter mastery matrix (confidence × mistake density, quadrant labels)
+- [x] Pure `analytics` helpers + Vitest tests
 
 ## Phase 10 — Study sessions & daily log
 
-- [ ] Study session logging
-- [ ] Daily log (mood, reflection); `totalMinutes` derived
-- [ ] Chapter study history + `lastStudiedAt` updates
+- [x] Study session logging (modal from dashboard + chapter overview) via transaction
+- [x] Daily log (mood + reflection, autosave); `totalMinutes` derived from sessions
+- [x] Chapter study history list + `lastStudiedAt` updates; "min studied today" on dashboard
 
 ## Phase 11 — Formula print sheet
 
-- [ ] Print/PDF stylesheet: dense layout of starred formulas
+- [x] `/formulas/print` standalone (no shell) dense print stylesheet of starred formulas + Print button
 
 ## Phase 12 — Goals
 
-- [ ] Goal CRUD; derived `currentValue` where possible
-- [ ] Surface active goals on dashboard
+- [x] Goal CRUD in Settings; derived `currentValue` (percentile/weekly-hours/mocks/chapters) via pure `goals` lib + tests
+- [x] Active goals surfaced on dashboard with live progress
 
 ## Phase 13 — Settings & polish
 
-- [ ] Settings (`/settings`): editable exam date, re-seed, danger zone (double-confirm)
-- [ ] Global shortcuts: `Ctrl/Cmd+K` command palette, `/` focus search, `Esc` close
-- [ ] Mobile-responsive pass (mistake logging works on mobile)
-- [ ] Accessibility pass on section colour palette
+- [x] Settings (`/settings`): editable exam date, re-seed, danger zone (double-confirm) — done earlier
+- [x] Command palette `Ctrl/Cmd+K` + `/` (nav + actions); `Esc` closes; modals close on Esc
+- [x] Mobile-responsive shell (off-canvas drawer + top bar); quick-add works on mobile
+- [x] `navigator.storage.persist()` requested on startup (anti-eviction)
+- [~] A11y: section palette is colour-coded but form `<label>`s aren't yet tied to inputs via `htmlFor` — minor, follow-up.
+- Deferred minor items: markdown *rendering* for notes, per-section mock percentiles input, hours-vs-score correlation chart.
 
-## Phase 14 — Deployment
+## Phase 14 — Deployment (Vercel)
 
-- [ ] Choose host (GitHub Pages or Vercel)
-- [ ] SPA deep-link fallback (rewrite / 404.html / HashRouter as needed)
-- [ ] Vite `base` + Router `basename` if project-site subpath
-- [ ] Optional PWA manifest for offline install
-- [ ] Verify offline load + IndexedDB persistence on the deployed URL
+- [x] Host chosen: Vercel (serves from `/`, no base-path needed)
+- [x] SPA deep-link fallback: `vercel.json` rewrite `/(.*) → /index.html` (verified via prod preview + real browser)
+- [x] n/a — no Vite `base`/basename needed (root-served)
+- [x] PWA manifest + on-brand SVG icon (`public/manifest.webmanifest`, `public/icon.svg`), linked in `index.html`
+- [x] Prod build verified: deep-link renders, manifest/icon 200, no page errors
+- [ ] **User action:** push repo + connect to Vercel (or `npx vercel`) — deploy done from user's own git account
+- [ ] Optional later: service worker (offline first-load / installable caching) via vite-plugin-pwa — needs a dependency, ask first
