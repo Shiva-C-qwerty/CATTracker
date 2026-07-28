@@ -1,6 +1,10 @@
 # Dependencies
 node_modules
 
+# Claude_temp_files
+CLAUDE.md
+PROGRESS.md
+
 # Build output
 dist
 dist-ssr
