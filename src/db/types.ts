@@ -4,6 +4,18 @@
 
 export type SectionId = 'VARC' | 'DILR' | 'QA';
 
+/**
+ * Sync bookkeeping carried by every syncable entity. Stamped automatically by
+ * the change-tracking hooks in src/db/changeTracking.ts — never set it by hand
+ * in a mutation. Optional because records written before schema v2 (and rows
+ * from older JSON backups) won't have it; those are treated as "never synced"
+ * and get stamped on the next write or on the v2 upgrade.
+ */
+export interface SyncFields {
+  /** Client clock (ms) at the last local write. Drives last-write-wins. */
+  _updatedAt?: number;
+}
+
 export type ChapterStatus =
   | 'not-started'
   | 'learning'
@@ -13,7 +25,7 @@ export type ChapterStatus =
 
 export type Confidence = 1 | 2 | 3 | 4 | 5;
 
-export interface Chapter {
+export interface Chapter extends SyncFields {
   id: string;
   sectionId: SectionId;
   topicGroup: string; // 'Arithmetic', 'RC', etc.
@@ -40,7 +52,7 @@ export interface MockSection {
   percentile: number | null;
 }
 
-export interface Mock {
+export interface Mock extends SyncFields {
   id: string;
   name: string; // 'IMS SimCAT 07'
   provider: string; // free text, autocompleted from history
@@ -72,7 +84,7 @@ export type ErrorType =
 
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
-export interface Mistake {
+export interface Mistake extends SyncFields {
   id: string;
   chapterId: string;
   sourceType: MistakeSourceType;
@@ -103,7 +115,7 @@ export interface Mistake {
   reviewStreak?: number; // consecutive "Got it" — two in a row resolves it
 }
 
-export interface Formula {
+export interface Formula extends SyncFields {
   id: string;
   chapterId: string;
   title: string;
@@ -119,7 +131,7 @@ export interface Formula {
 
 export type StudyActivity = 'learning' | 'practice' | 'revision' | 'mock-analysis';
 
-export interface StudySession {
+export interface StudySession extends SyncFields {
   id: string;
   chapterId: string | null;
   sectionId: SectionId | null;
@@ -131,7 +143,7 @@ export interface StudySession {
   notes: string;
 }
 
-export interface DailyLog {
+export interface DailyLog extends SyncFields {
   date: string; // 'YYYY-MM-DD', primary key
   totalMinutes: number; // derived from sessions
   sectionsTouched: string[];
@@ -146,7 +158,7 @@ export type GoalType =
   | 'chapter-completion'
   | 'custom';
 
-export interface Goal {
+export interface Goal extends SyncFields {
   id: string;
   type: GoalType;
   label: string;
@@ -157,7 +169,37 @@ export interface Goal {
 }
 
 // Key/value store for app metadata: lastExportAt, seedVersion, exam date, etc.
-export interface MetaRecord {
+export interface MetaRecord extends SyncFields {
   key: string;
   value: unknown;
+}
+
+// ---------------------------------------------------------------------------
+// Sync-only tables (schema v2). These are local bookkeeping and are themselves
+// never synced — syncing the sync state would be circular.
+// ---------------------------------------------------------------------------
+
+/**
+ * A delete that still needs to be propagated. Deletes can't be detected by
+ * scanning the local tables (the row is gone), so the delete mutations record
+ * one of these. `key` is `${table}:${recordId}` so repeat deletes collapse.
+ */
+export interface Tombstone {
+  key: string;
+  table: string;
+  recordId: string;
+  deletedAt: number;
+}
+
+/** Single-row (`key: 'default'`) sync bookkeeping for this device. */
+export interface SyncState {
+  key: string;
+  /** Supabase user id this device is currently synced as; null = sync off. */
+  userId: string | null;
+  /** Pull watermark: the highest server `seq` this device has applied. */
+  seq: number;
+  /** Push watermark: rows with `_updatedAt` above this still need pushing. */
+  pushedThrough: number;
+  /** Wall-clock of the last fully successful sync, for the Settings UI. */
+  lastSyncAt: number | null;
 }

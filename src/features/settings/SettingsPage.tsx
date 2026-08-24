@@ -16,6 +16,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Field, Input } from '@/components/ui/Input';
 import { downloadBackup, readFileAsText } from './fileTransfer';
 import { useExportReminder } from './useExportReminder';
+import { SyncPanel } from './SyncPanel';
 import { GoalsManager } from '@/features/goals/GoalsManager';
 
 export function SettingsPage() {
@@ -127,6 +128,8 @@ export function SettingsPage() {
           </Field>
         </div>
       </Card>
+
+      <SyncPanel />
 
       <GoalsManager />
 

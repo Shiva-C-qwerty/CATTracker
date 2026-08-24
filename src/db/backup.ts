@@ -1,4 +1,5 @@
-import { db } from './db';
+import { SYNCED_TABLES, db } from './db';
+import { recordTombstone } from './changeTracking';
 import { META_KEYS, setMeta } from './meta';
 import type {
   Chapter,
@@ -130,9 +131,14 @@ export async function importAll(file: BackupFile, mode: 'merge' | 'replace'): Pr
       db.dailyLogs,
       db.goals,
       db.meta,
+      // In scope so a replace can record its deletions in the same transaction.
+      db.outbox,
     ],
     async () => {
       if (mode === 'replace') {
+        // Record what's being erased before erasing it, or the deletions never
+        // propagate and the next sync pulls the old rows straight back.
+        await tombstoneEverything();
         await Promise.all([
           db.chapters.clear(),
           db.mocks.clear(),
@@ -158,8 +164,32 @@ export async function importAll(file: BackupFile, mode: 'merge' | 'replace'): Pr
   );
 }
 
-/** Wipe all app data. Used by the Settings danger zone. */
+/**
+ * Tombstone every row currently in the synced tables.
+ *
+ * `.clear()` erases rows without going through the delete mutations, so on its
+ * own a wipe leaves no tombstones — the deletions never reach the server and
+ * the next pull quietly restores everything. Anything that clears a table
+ * wholesale has to record the deletions first.
+ */
+async function tombstoneEverything(): Promise<void> {
+  for (const { name } of SYNCED_TABLES) {
+    const keys = await db.table(name).toCollection().primaryKeys();
+    for (const key of keys) {
+      await recordTombstone(name, String(key));
+    }
+  }
+}
+
+/**
+ * Wipe all app data. Used by the Settings danger zone.
+ *
+ * When sync is on this propagates: clearing here clears the account, on every
+ * device. That is what the button says it does, and the flow is already behind
+ * a double confirmation.
+ */
 export async function clearAllData(): Promise<void> {
+  await tombstoneEverything();
   await Promise.all([
     db.chapters.clear(),
     db.mocks.clear(),

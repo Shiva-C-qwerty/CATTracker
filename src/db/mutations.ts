@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { db } from './db';
+import { deleteAndTrack } from './changeTracking';
 import { newId } from '@/lib/id';
 import { sectionScore } from '@/lib/scoring';
 import { gradeReview, type ReviewGrade } from '@/lib/revision';
@@ -144,7 +145,7 @@ export function setMockAnalysed(id: string, analysed: boolean): Promise<number> 
 }
 
 export function deleteMock(id: string): Promise<void> {
-  return db.mocks.delete(id);
+  return deleteAndTrack('mocks', id);
 }
 
 // ---------------------------------------------------------------------------
@@ -229,7 +230,7 @@ export function setMistakeResolved(id: string, resolved: boolean): Promise<numbe
 }
 
 export function deleteMistake(id: string): Promise<void> {
-  return db.mistakes.delete(id);
+  return deleteAndTrack('mistakes', id);
 }
 
 // ---------------------------------------------------------------------------
@@ -267,7 +268,7 @@ export function toggleFormulaStar(id: string, starred: boolean): Promise<number>
 }
 
 export function deleteFormula(id: string): Promise<void> {
-  return db.formulas.delete(id);
+  return deleteAndTrack('formulas', id);
 }
 
 // ---------------------------------------------------------------------------
@@ -302,7 +303,7 @@ export async function addStudySession(input: StudySessionInput): Promise<string>
 
 export async function deleteStudySession(id: string): Promise<void> {
   const session = await db.sessions.get(id);
-  await db.sessions.delete(id);
+  await deleteAndTrack('sessions', id);
   if (session) await recomputeDailyLog(format(session.startedAt, 'yyyy-MM-dd'));
 }
 
@@ -367,5 +368,5 @@ export function updateGoal(id: string, patch: Partial<Omit<Goal, 'id'>>): Promis
 }
 
 export function deleteGoal(id: string): Promise<void> {
-  return db.goals.delete(id);
+  return deleteAndTrack('goals', id);
 }
