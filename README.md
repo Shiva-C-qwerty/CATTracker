@@ -114,6 +114,18 @@ Every record carries an `_updatedAt` stamp applied automatically by Dexie hooks,
 so mutations don't have to know sync exists. Deletes are recorded as tombstones
 in an `outbox` table, since a deleted row can't be detected by scanning.
 
+### Signing in
+
+The app opens on a login page (`/login`). Two ways past it:
+
+- **Sign in** with an email link — data syncs across your devices.
+- **Continue without an account** — everything works, data stays on this
+  device, and you can sign in later from Settings.
+
+Deep links survive the round trip: hit `/mistakes` signed out and you'll land
+back there after signing in. A build with no Supabase credentials skips the gate
+entirely, since there'd be nothing to sign into.
+
 ### Setup
 
 1. Create a project at [supabase.com](https://supabase.com) (the free tier is

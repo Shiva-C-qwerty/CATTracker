@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { onLocalChange } from '@/db/changeTracking';
+import { setLocalOnly } from '@/features/auth/localOnly';
 import { hasUserData } from '@/lib/sync';
 import { isSyncConfigured, supabase } from './client';
 import { localWorkSummary, remoteHasData, syncNow as runSyncCycle } from './engine';
@@ -29,12 +30,19 @@ export type AdoptionChoice =
 interface SyncContextValue {
   configured: boolean;
   email: string | null;
+  /**
+   * True until the stored session has been restored. The auth gate must wait
+   * on this, or a signed-in user gets bounced to /login for a frame on every
+   * page load.
+   */
+  initializing: boolean;
   status: SyncStatus;
   lastSyncAt: number | null;
   error: string | null;
   /** Set when first sign-in needs a merge-or-replace decision. */
   needsAdoptionChoice: boolean;
-  sendMagicLink: (email: string) => Promise<void>;
+  /** `redirectPath` is where the emailed link lands, so deep links survive. */
+  sendMagicLink: (email: string, redirectPath?: string) => Promise<void>;
   signOut: () => Promise<void>;
   syncNow: () => Promise<void>;
   resolveAdoption: (choice: AdoptionChoice) => Promise<void>;
@@ -56,6 +64,8 @@ const PUSH_DEBOUNCE_MS = 1_500;
 export function SyncProvider({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  // Unconfigured builds have no session to restore, so nothing to wait for.
+  const [initializing, setInitializing] = useState(isSyncConfigured);
   const [status, setStatus] = useState<SyncStatus>('off');
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -91,16 +101,30 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   // --- Auth session ---------------------------------------------------------
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase) {
+      setInitializing(false);
+      return;
+    }
 
-    supabase.auth.getSession().then(({ data }) => {
-      setEmail(data.session?.user.email ?? null);
-      setUserId(data.session?.user.id ?? null);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        setEmail(data.session?.user.email ?? null);
+        setUserId(data.session?.user.id ?? null);
+      })
+      .catch((err) => {
+        // Never leave the gate stuck: a failed session lookup should land the
+        // user on /login, not on a permanent splash screen.
+        console.error('Could not restore session:', err);
+      })
+      .finally(() => setInitializing(false));
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setEmail(session?.user.email ?? null);
       setUserId(session?.user.id ?? null);
+      setInitializing(false);
+      // Signing in supersedes local-only mode, however it was entered.
+      if (session) setLocalOnly(false);
     });
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -203,11 +227,13 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     };
   }, [userId, needsAdoptionChoice, runSync]);
 
-  const sendMagicLink = useCallback(async (address: string) => {
+  const sendMagicLink = useCallback(async (address: string, redirectPath = '/') => {
     if (!supabase) throw new Error('Sync is not configured on this build.');
     const { error: err } = await supabase.auth.signInWithOtp({
       email: address,
-      options: { emailRedirectTo: window.location.origin },
+      // Supabase only honours allowlisted destinations, so the project's
+      // Redirect URLs must include a `/**` wildcard for deep links to work.
+      options: { emailRedirectTo: `${window.location.origin}${redirectPath}` },
     });
     if (err) throw new Error(err.message);
   }, []);
@@ -215,6 +241,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
+    // Drop local-only mode too, so signing out lands on the login page rather
+    // than silently continuing into the app unauthenticated.
+    setLocalOnly(false);
     // Clear the watermarks so signing back in re-establishes cleanly rather
     // than resuming against stale positions. Local data is left untouched.
     await resetSyncState(null);
@@ -236,6 +265,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       value={{
         configured: isSyncConfigured,
         email,
+        initializing,
         status,
         lastSyncAt,
         error,
